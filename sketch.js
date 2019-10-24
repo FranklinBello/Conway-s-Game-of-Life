@@ -3,112 +3,97 @@
 
 let grid;
 let margin = 50;
-let cellSize = 100;
+let cellSize = 20;
 
 function setup() {
-  createCanvas(600, 600);
+  createCanvas(700, 700);
   background('#CCC');
-  let ncols = floor((width - 2*margin) / cellSize);
-  let nrows = floor((height - 2*margin) / cellSize);
+  let ncols = floor(width / cellSize);
+  let nrows = floor(height / cellSize);
   grid = new Grid(nrows, ncols);
-  setInterval(display, 500);
-}
-
-const display = function disp() {
-  translate(margin, margin);
-  grid.round();
   grid.show(cellSize);
+  setInterval(display, 100);
 }
 
-function draw() {
+function display() {
+  grid.show(cellSize);
+  grid.round();
 }
+
+function draw() {}
 
 class Grid {
 
   constructor(nrows, ncols) {
     this.nrows = nrows;
     this.ncols = ncols;
-    this.grid = [];
+    this.generation = 0;
+    this.list = [];
     for (let i = 0; i < nrows; i++)
       for (let j = 0; j < ncols; j++)
-        this.grid.push(new Cell(i, j));
+        this.list.push(new Cell(i, j));
   }
 
-  round(){
-    for(let i = 0; i < this.grid.length; i++) {
-      let nAlive = this.countAliveNeighbors(this.grid[i]);
-      if (this.grid[i].getStatus()){
-        if (nAlive < 2 || nAlive > 3) {
-          this.grid[i].switchStatus();
+  transformIndex(row, col) {
+    if (row < 0 || row > this.nrows - 1 || col < 0 || col > this.ncols - 1) {
+      return -1;
+    }
+    return row * this.ncols + col;
+  }
+
+  round() {
+    this.generation++;
+    let aux = [];
+    for (let i = 0; i < this.list.length; i++) {
+      let r = this.list[i].getRow();
+      let c = this.list[i].getCol();
+      let s = this.list[i].isAlive();
+      let count = 0;
+      if (this.list[i].isAlive())
+        count = count - 1;
+      for (let h = -1; h <= 1; h++) {
+        for (let k = -1; k <= 1; k++) {
+          let index = this.transformIndex(r + h, c + k);
+          if (index >= 0) {
+            if (this.list[index].isAlive()){
+              count = count + 1;
+            }
+          }
         }
+      }
+      aux.push(count);
+    }
+    for (let i = 0; i < this.list.length; i++) {
+      let n = aux[i];
+      if (this.list[i].isAlive()) {
+        if (n < 2 || n > 3)
+          this.list[i].setStatus(false);
       } else {
-        if (nAlive === 3) {
-          this.grid[i].switchStatus();
-        }
+        if (n === 3)
+          this.list[i].setStatus(true);
       }
     }
   }
 
-  getIndex(row, col){
-    return row * this.ncols + col;
-  }
-
-  countAliveNeighbors(cell){
-    let count = 0;
-    let index = this.getIndex(cell.getRow(), cell.getCol());
-
-    let topLeft = this.grid[index - this.ncols - 1];
-    let top = this.grid[index - this.ncols];
-    let topRight = this.grid[index - this.ncols + 1];
-
-    let left = this.grid[index - 1];
-    let right = this.grid[index + 1];
-
-    let bottomLeft = this.grid[index + this.ncols - 1];
-    let bottom = this.grid[index + this.ncols];
-    let bottomRight = this.grid[index + this.ncols + 1];
-
-    if (topLeft && topLeft.getStatus())
-      count++;
-    if (top && top.getStatus())
-      count++;
-    if (topRight && topRight.getStatus())
-      count++
-
-    if (left && left.getStatus()) 
-      count++;
-    if (right && right.getStatus()) 
-      count++;
-    
-    if (bottomLeft && bottomLeft.getStatus()) 
-      count++;
-    if (bottom && bottom.getStatus()) 
-      count++;
-    if (bottomRight && bottomRight.getStatus()) 
-      count++;
-    
-    return count;
-  }
-
   show(size) {
-    for (let i = 0; i < this.grid.length; i++) {
-      let x = this.grid[i].getRow() * size;
-      let y = this.grid[i].getCol() * size;
+    for (let i = 0; i < this.list.length; i++) {
+      let x = this.list[i].getCol() * size;
+      let y = this.list[i].getRow() * size;
       stroke('#777');
       strokeWeight(3);
-      if (this.grid[i].getStatus()) {
+      if (this.list[i].isAlive())
         fill('#000');
-      } else {
-        fill('#FFF')
-      }
+      else
+        fill('#FFF');
       rect(x, y, size, size);
-    } 
+    }
   }
+
 }
 
 class Cell {
 
-  constructor(row, col){
+  constructor(row, col) {
     this.row = row;
     this.col = col;
     this.alive = random([true, false, false]);
@@ -122,11 +107,11 @@ class Cell {
     return this.col;
   }
 
-  getStatus() {
+  isAlive() {
     return this.alive;
   }
 
-  switchStatus() {
-    this.alive = !this.alive;
+  setStatus(status) {
+    this.alive = status;
   }
 }
